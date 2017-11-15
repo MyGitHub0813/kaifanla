@@ -1,0 +1,91 @@
+/**
+ * Created by Administrator on 2017/10/18.
+ */
+var app=angular.module('kaifanla',['ionic']);
+app.config(function($stateProvider,$urlRouterProvider){
+  $stateProvider
+    .state('start',{
+      url:'/start',
+      templateUrl:'tpl/start.html'
+    })
+    .state('main',{
+      url:'/main',
+      templateUrl:'tpl/main.html',
+      controller:'mainCtrl'
+    })
+    .state('detail',{
+      url:'/detail/:id',
+      templateUrl:'tpl/detail.html',
+      controller:'detailCtrl'
+    })
+    .state('order',{
+      url:'/order/:id',
+      templateUrl:'tpl/order.html',
+      controller:'orderCtrl'
+    })
+    .state('myOrder',{
+      url:'/myOrder',
+      templateUrl:'tpl/myOrder.html',
+      controller:'myOrderCtrl'
+    });
+  $urlRouterProvider.otherwise('/start');
+});
+app.controller('parentCtrl',['$scope','$state',function($scope,$state){
+  $scope.jump=function(stateName,arg){
+    $state.go(stateName,arg);
+  }
+}]);
+app.controller('mainCtrl',['$scope','$http',function($scope,$http){
+  $scope.hasMore=true;
+  $scope.inputTxt={kw:''};
+  $scope.$watch('inputTxt.kw',function(){
+    if($scope.inputTxt.kw){
+      $http.get('data/2_dish_getbykw.php?kw='+$scope.inputTxt.kw)
+        .success(function(data){
+          $scope.dishList=data;
+        })
+    }
+  });
+  $http.get('data/1_dish_getbypage.php?start=0')
+    .success(function(data){
+      $scope.dishList=data;
+    });
+  $scope.loadMore=function(){
+    $http.get('data/1_dish_getbypage.php?start='+$scope.dishList.length)
+      .success(function(data){
+        if(data.length<5){
+          $scope.hasMore=false;
+        }
+        $scope.dishList=$scope.dishList.concat(data);
+        $scope.$broadcast('scroll.infiniteScrollComplete')
+      })
+  }
+}]);
+app.controller('detailCtrl',['$scope','$http','$stateParams',function($scope,$http,$stateParams){
+  $http.get('data/3_dish_getbyid.php?id='+$stateParams.id)
+    .success(function(data){
+      $scope.dish=data;
+    })
+}]);
+app.controller('orderCtrl',['$scope','$http','$stateParams','$rootScope','$httpParamSerializerJQLike',function($scope,$http,$stateParams,$rootScope,$httpParamSerializerJQLike){
+  $scope.order={did:$stateParams.id};
+  $scope.submitOrder=function(){
+    var str=$httpParamSerializerJQLike($scope.order);
+    $http.get('data/4_order_add.php?'+str)
+      .success(function(data){
+        console.log(data);
+        if(data[0].msg=='succ'){
+          $rootScope.phone=$scope.order.phone;
+          $scope.succMsg='下单成功！订单编号为：'+data[0].oid;
+        }else{
+          $scope.errMsg='下单失败！'
+        }
+      })
+  }
+}]);
+app.controller('myOrderCtrl',['$scope','$http','$rootScope',function($scope,$http,$rootScope){
+  $http.get('data/5_order_getbyphone.php?phone='+$rootScope.phone)
+    .success(function(data){
+      $scope.orderList=data;
+    });
+}]);
